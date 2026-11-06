@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<title>Carro Brazo</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --pad:#1c232c; --line:#29323d; --txt:#e8edf3; --mut:#8a96a5;
+  --acc:#3b82f6; --acc2:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --btn:#232b36;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);overflow:hidden;overscroll-behavior:none;
+  font:15px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+/* ---------- barra superior ---------- */
+#barra{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 10px}
+.chip{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel);white-space:nowrap;font-size:14px}
+#dot{width:10px;height:10px;border-radius:50%;background:var(--mut);flex:0 0 auto}
+#dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)} #dot.wait{background:var(--warn)} #dot.mal{background:var(--bad)}
+#ticker{flex:1;min-width:0;color:var(--mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#ticker.nuevo{color:var(--txt)}
+.ico{width:40px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:18px;flex:0 0 auto}
+#paro{height:38px;padding:0 18px;border:0;border-radius:10px;background:var(--bad);color:#fff;font-weight:800;letter-spacing:.04em;flex:0 0 auto;touch-action:none}
+#paro:active{filter:brightness(1.25)}
+#banner{flex:0 0 auto;margin:0 10px 6px;padding:6px 12px;border-radius:10px;background:#7c2d12;color:#fff;font-weight:600;text-align:center;font-size:14px}
+
+/* ---------- mando ---------- */
+#mando{flex:1;min-height:0;display:grid;gap:10px;padding:0 10px 10px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);transition:opacity .2s}
+#mando.apagado{opacity:.45}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;min-height:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+.tit{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);flex:0 0 auto}
+.tit .esp{flex:1}
+.tag{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--warn);color:#111;font-weight:700;letter-spacing:0}
+
+#joyWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;container-type:size}
+#joy{position:relative;width:min(96cqw,96cqh);aspect-ratio:1;border-radius:50%;touch-action:none;
+  background:radial-gradient(circle at 50% 50%,#222b36 0,#18202a 60%,#141a21 100%);border:2px solid var(--line)}
+#joy::before,#joy::after{content:"";position:absolute;background:var(--line)}
+#joy::before{left:50%;top:10%;bottom:10%;width:1px}
+#joy::after{top:50%;left:10%;right:10%;height:1px}
+#knob{position:absolute;left:50%;top:50%;width:38%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,var(--acc2),var(--acc));box-shadow:0 6px 18px #0009;pointer-events:none;z-index:1}
+#joy.on{border-color:var(--acc)}
+.fila{display:flex;align-items:center;gap:10px;min-width:0}
+.fila>span{flex:0 0 64px;color:var(--mut);font-size:13px}
+.fila>b{flex:0 0 44px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--acc);height:26px}
+#info{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto}
+#pwm{color:var(--mut);font-size:12px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dist{flex:0 0 auto;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--pad);color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dist.libre{color:var(--ok)}
+.dist.lento{background:#78350f;color:#fde68a}
+.dist.bloq{background:var(--bad);color:#fff;font-weight:700}
+#joy.bloq{border-color:var(--bad);box-shadow:inset 0 0 0 4px #ef444440}
+
+#rejilla{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px}
+.pad{background:var(--pad);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:0;min-width:0}
+.padH{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;flex:0 0 auto}
+.padH span{color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+.btns{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.hold{border:1px solid var(--line);background:var(--btn);border-radius:12px;min-height:40px;touch-action:none;
+  font-size:clamp(16px,5vmin,30px);font-weight:600;display:flex;align-items:center;justify-content:center}
+.hold.txt{font-size:clamp(14px,3.6vmin,19px)}
+.hold.on{background:var(--acc);border-color:var(--acc2);color:#fff}
+#btnSost.on{border-color:var(--ok);color:var(--ok)}
+#btnSost{height:30px;font-size:12px;padding:0 12px}
+
+@media (orientation:portrait){
+  #mando{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+  #zonaBrazo{order:1} #zonaRuedas{order:2}
+  #ticker{display:none}
+}
+@media (max-height:420px){
+  #barra{padding:6px 8px} #mando{gap:8px;padding:0 8px 8px} .panel{padding:8px;gap:6px}
+  .chip,.ico,#paro{height:34px}
+  #zonaRuedas>.tit{display:none}
+  #zonaRuedas input[type=range]{height:22px}
+}
+
+/* ---------- hoja de ajustes ---------- */
+#hoja{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#hoja[hidden]{display:none}
+.hojaBar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tabs{flex:1;display:flex;gap:6px;overflow-x:auto}
+.tabs button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;white-space:nowrap}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.hojaCuerpo{flex:1;min-height:0;overflow-y:auto;padding:12px;-webkit-user-select:text;user-select:text}
+.hojaCuerpo>div{max-width:900px;margin:0 auto}
+.hojaPie{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line)}
+.hojaPie button{flex:1;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.hojaPie .prim{background:var(--ok);border-color:var(--ok);color:#06240f;font-weight:700}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.tarjeta{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.tH{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fila3{display:flex;gap:6px}
+.mini{border:1px solid var(--line);background:var(--btn);border-radius:9px;padding:7px 10px;font-size:13px;flex:1}
+.nota{color:var(--mut);font-size:13px;margin:0 0 12px;line-height:1.45}
+.nota b{color:var(--txt)}
+.grupoBtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.grupoBtns button{height:46px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+#log{height:min(55vh,420px);overflow:auto;background:#090c10;border:1px solid var(--line);border-radius:10px;padding:8px;
+  font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+#cmdf{display:flex;gap:8px;margin-top:8px}
+#cmd{flex:1;min-width:0;height:42px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:#090c10;color:var(--txt);font-size:15px}
+#cmdf button{height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:4px 0 10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="barra">
+    <button id="conn" class="chip"><span id="dot"></span><span id="connTxt">…</span></button>
+    <div id="ticker" title="Abrir consola"></div>
+    <button id="btnFull" class="ico" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+    <button id="btnAjustes" class="ico" title="Ajustes" aria-label="Ajustes">⚙</button>
+    <button id="paro">PARO</button>
+  </header>
+  <div id="banner" hidden>Rutina en curso · PARO para cancelar</div>
+
+  <main id="mando" class="apagado">
+    <section id="zonaRuedas" class="panel">
+      <div class="tit">Ruedas</div>
+      <div id="joyWrap"><div id="joy"><div id="knob"></div></div></div>
+      <label class="fila"><span>Avance</span><input id="vel" type="range" min="0" max="255" value="200"><b id="velV">78%</b></label>
+      <label class="fila"><span>Giro</span><input id="giro" type="range" min="0" max="255" value="255"><b id="giroV">100%</b></label>
+      <div id="info"><span id="dist" class="dist">Distancia —</span><span id="pwm">Detenido</span></div>
+    </section>
+
+    <section id="zonaBrazo" class="panel">
+      <div class="tit">Brazo <span id="calTag" class="tag" hidden>CAL</span><span class="esp"></span>
+        <button id="btnSost" class="chip">Sostener</button></div>
+      <div id="rejilla">
+        <div class="pad"><div class="padH"><b>Base</b><span id="p0"></span></div>
+          <div class="btns"><button class="hold" data-i="0" data-d="-1" aria-label="Base a la izquierda">◀</button>
+            <button class="hold" data-i="0" data-d="1" aria-label="Base a la derecha">▶</button></div></div>
+        <div class="pad"><div class="padH"><b>Pinza</b><span id="p3"></span></div>
+          <div class="btns"><button class="hold txt" data-i="3" data-d="1">Abrir</button>
+            <button class="hold txt" data-i="3" data-d="-1">Cerrar</button></div></div>
+        <div class="pad"><div class="padH"><b>Izquierdo</b><span id="p2"></span></div>
+          <div class="btns"><button class="hold" data-i="2" data-d="1" aria-label="Izquierdo arriba">▲</button>
+            <button class="hold" data-i="2" data-d="-1" aria-label="Izquierdo abajo">▼</button></div></div>
+        <div class="pad"><div class="padH"><b>Derecho</b><span id="p1"></span></div>
+          <div class="btns"><button class="hold" data-i="1" data-d="1" aria-label="Derecho arriba">▲</button>
+            <button class="hold" data-i="1" data-d="-1" aria-label="Derecho abajo">▼</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="hoja" hidden>
+  <div class="hojaBar">
+    <div class="tabs">
+      <button data-tab="brazo" class="on">Brazo</button>
+      <button data-tab="ruedas">Ruedas</button>
+      <button data-tab="pruebas">Pruebas</button>
+      <button data-tab="consola">Consola</button>
+    </div>
+    <button id="cerrarHoja" class="ico" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="hojaCuerpo">
+    <div data-panel="brazo">
+      <p class="nota"><b>Fuerza</b>: qué tan rápido gira cada servo; en un servo de 360° más rápido también es más fuerza.<br>
+      <b>Sostener</b>: un servo de 360° no se queda en su lugar solo; al soltar, el peso lo baja. Sube el brazo, suelta,
+      y si baja, sube Sostener de 5 en 5. Si empieza a subir solo, bájalo. Cuando se quede quieto, toca <b>Guardar en el carro</b>.
+      Si ▲ baja en vez de subir, toca <b>Invertir</b>.</p>
+      <div class="tarjetas" id="tarjetas"></div>
+    </div>
+    <div data-panel="ruedas" hidden>
+      <p class="nota">Usa <b>Pruebas → Ruedas</b> para ver qué rueda es cada motor. Si una gira al revés al decir ADELANTE, inviértela aquí y toca Guardar.<br>
+      <b>Potencia</b>: 255 = 100 %. Arriba de ~70 % los motores amarillos pueden calentarse; tócalos después de un minuto de uso.</p>
+      <div class="grupoBtns" id="motoresInv"></div>
+      <h3>Anti-choque (ultrasónico)</h3>
+      <p class="nota">Si hay algo enfrente más cerca que la <b>distancia de paro</b>, el carro ya no avanza; sí puede girar y retroceder.
+      Desde 25 cm antes va frenando poco a poco. Sube la distancia si de todos modos alcanza a pegar (el carro pesa y tarda en frenar).</p>
+      <div class="tarjeta" style="max-width:520px">
+        <div class="tH"><b>Anti-choque</b><button id="acBtn" class="mini" style="flex:0 0 auto" data-c="us">…</button></div>
+        <label class="fila"><span>Paro a</span><input id="dp" type="range" min="5" max="60" step="1" value="20"><b id="dpV">20 cm</b></label>
+        <div id="distAjustes" class="nota" style="margin:0">Distancia medida: —</div>
+      </div>
+    </div>
+    <div data-panel="pruebas" hidden>
+      <h3>Rutinas (con el carro levantado)</h3>
+      <div class="grupoBtns">
+        <button data-c="r1">1 · Cada rueda</button><button data-c="r2">2 · Carro</button>
+        <button data-c="r3">3 · Brazo</button><button data-c="r">Todas</button>
+      </div>
+      <h3>Brazo</h3>
+      <div class="grupoBtns">
+        <button data-c="home">Home</button><button data-c="cal">Modo calibración</button>
+        <button data-c="off">Soltar servos</button><button data-c="sost">Sostener sí/no</button>
+      </div>
+      <h3>Información</h3>
+      <div class="grupoBtns"><button data-c="?">Estado</button><button data-c="h">Comandos</button></div>
+    </div>
+    <div data-panel="consola" hidden>
+      <div id="log"></div>
+      <form id="cmdf"><input id="cmd" placeholder="comando, ej: o1 40" autocomplete="off" autocapitalize="off" spellcheck="false"><button>Enviar</button></form>
+    </div>
+  </div>
+  <div class="hojaPie"><button data-c="guardar" class="prim">Guardar en el carro</button><button id="restaurar">Restaurar</button></div>
+</div>
+
+<script>
+'use strict';
+const $=q=>document.querySelector(q), $$=q=>[...document.querySelectorAll(q)];
+const MODO = location.protocol==='http:' ? 'wifi' : 'bt';   // servida por el ESP32 = WiFi; https = Bluetooth
+const NOMBRES=['Base','Derecho','Izquierdo','Pinza'];
+const liberar=[];
+let conectado=false;
+const espera=ms=>new Promise(r=>setTimeout(r,ms));
+const pct=v=>Math.round(Math.abs(v)*100/255)+'%';
+function vib(ms){ try{ navigator.vibrate && navigator.vibrate(ms||12); }catch(e){} }
+
+// ---------------- mensajes ----------------
+const logEl=$('#log');
+let tickerT=null;
+function log(t){
+  const abajo=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-30;
+  logEl.textContent+=t+'\n';
+  if(logEl.textContent.length>30000) logEl.textContent=logEl.textContent.slice(-20000);
+  if(abajo) logEl.scrollTop=logEl.scrollHeight;
+  const tk=$('#ticker'); tk.textContent=t; tk.classList.add('nuevo');
+  clearTimeout(tickerT); tickerT=setTimeout(()=>tk.classList.remove('nuevo'),2500);
+}
+function setConn(estado,txt){
+  conectado = estado==='ok';
+  $('#dot').className=estado; $('#connTxt').textContent=txt;
+  $('#mando').classList.toggle('apagado',!conectado);
+}
+function recibirLinea(l){
+  if(l.charAt(0)==='#'){ try{ estado(JSON.parse(l.slice(1))); }catch(e){} return; }
+  log(l);
+}
+
+// ---------------- enlace WiFi (página servida por el carro) ----------------
+const wifi={
+  cola:[],ctrl:null,ocupado:false,seq:0,fallos:0,
+  enviar(l){this.cola.push(l);this.bombear();},
+  control(f){this.ctrl=f;this.bombear();},
+  async pedir(url){
+    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),1200);
+    try{ const r=await fetch(url,{cache:'no-store',signal:ac.signal}); this.fallos=0; setConn('ok','WiFi · conectado'); return r; }
+    catch(e){ if(++this.fallos>=2) setConn('mal','WiFi · sin señal'); throw e; }
+    finally{ clearTimeout(t); }
+  },
+  async bombear(){
+    if(this.ocupado) return;
+    let l; if(this.cola.length) l=this.cola.shift(); else if(this.ctrl!==null){l=this.ctrl;this.ctrl=null;} else return;
+    this.ocupado=true;
+    try{ await this.pedir('/cmd?c='+encodeURIComponent(l)); }catch(e){}
+    this.ocupado=false; this.bombear();
+  },
+  async poll(){
+    try{ const r=await this.pedir('/poll?n='+this.seq); const j=await r.json();
+      (j.l||[]).forEach(recibirLinea); this.seq=j.n; estado(j.st); }catch(e){}
+    setTimeout(()=>this.poll(),350);
+  },
+  iniciar(){ setConn('wait','WiFi · conectando…'); this.poll(); },
+  clic(){ location.reload(); }
+};
+
+// ---------------- enlace Bluetooth (Web Bluetooth, Nordic UART) ----------------
+const NUS='6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+      RXU='6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+      TXU='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const bt={
+  dev:null,rx:null,cola:[],ctrl:null,ocupado:false,buf:'',dec:null,enc:new TextEncoder(),manual:false,sinResp:false,oidos:new WeakSet(),
+  iniciar(){
+    if(!navigator.bluetooth){
+      setConn('mal','Sin Bluetooth web');
+      log('Este navegador no permite Bluetooth. Abre esta página en Chrome (Android) con Bluetooth y Ubicación activados.');
+      return;
+    }
+    setConn('off','Bluetooth · Conectar');
+    log('Toca "Conectar" y elige CarroBrazo.');
+  },
+  async clic(){
+    if(this.rx){ soltarTodo(); if(confirm('¿Desconectar el Bluetooth?')){ this.manual=true; this.dev.gatt.disconnect(); } return; }
+    if(!navigator.bluetooth) return;
+    try{
+      this.dev=await navigator.bluetooth.requestDevice({filters:[{services:[NUS]},{namePrefix:'CarroBrazo'}],optionalServices:[NUS]});
+      if(!this.oidos.has(this.dev)){ this.dev.addEventListener('gattserverdisconnected',()=>this.perdido()); this.oidos.add(this.dev); }
+      this.manual=false;
+      await this.abrir();
+    }catch(e){
+      if(e.name!=='NotFoundError') log('Bluetooth: '+e.message);
+      if(!this.rx) setConn('off','Bluetooth · Conectar');
+    }
+  },
+  async abrir(){
+    setConn('wait','Conectando…');
+    const g=await this.dev.gatt.connect();
+    const svc=await g.getPrimaryService(NUS);
+    const rx=await svc.getCharacteristic(RXU);
+    const tx=await svc.getCharacteristic(TXU);
+    this.buf=''; this.dec=new TextDecoder();
+    if(!this.oidos.has(tx)){ tx.addEventListener('characteristicvaluechanged',e=>this.recibir(e.target.value)); this.oidos.add(tx); }
+    await tx.startNotifications();
+    this.sinResp=!!(rx.properties.writeWithoutResponse && rx.writeValueWithoutResponse);
+    this.cola=[]; this.ctrl=null; this.ocupado=false; this.rx=rx;
+    setConn('ok','Bluetooth · conectado');
+    pantallaEncendida();
+  },
+  recibir(dv){
+    this.buf+=this.dec.decode(dv,{stream:true});
+    let i; while((i=this.buf.indexOf('\n'))>=0){ const l=this.buf.slice(0,i).replace(/\r$/,''); this.buf=this.buf.slice(i+1); recibirLinea(l); }
+    if(this.buf.length>4000) this.buf='';
+  },
+  async perdido(){
+    this.rx=null; soltarTodo();
+    if(this.manual){ setConn('off','Bluetooth · Conectar'); log('Bluetooth desconectado.'); return; }
+    log('Se perdió el Bluetooth; reintentando…');
+    for(let k=1;k<=5;k++){
+      setConn('wait','Reconectando '+k+'/5…');
+      await espera(1200);
+      if(this.manual||this.rx) return;
+      try{ await this.abrir(); log('Bluetooth reconectado.'); return; }catch(e){}
+    }
+    setConn('off','Bluetooth · Conectar'); log('No se pudo reconectar. Toca Conectar.');
+  },
+  enviar(l){ if(!this.rx) return; this.cola.push(l); this.bombear(); },
+  control(f){ if(!this.rx) return; this.ctrl=f; this.bombear(); },
+  async bombear(){
+    if(this.ocupado||!this.rx) return;
+    let l; if(this.cola.length) l=this.cola.shift(); else if(this.ctrl!==null){l=this.ctrl;this.ctrl=null;} else return;
+    this.ocupado=true;
+    const d=this.enc.encode(l+'\n');
+    try{
+      for(let i=0;i<d.length;i+=20){
+        const p=d.slice(i,i+20);
+        if(this.sinResp) await this.rx.writeValueWithoutResponse(p);
+        else if(this.rx.writeValueWithResponse) await this.rx.writeValueWithResponse(p);
+        else await this.rx.writeValue(p);
+      }
+    }catch(e){}
+    this.ocupado=false; this.bombear();
+  }
+};
+const link = MODO==='wifi' ? wifi : bt;
+
+// ---------------- estado de control: se manda cada 100 ms ----------------
+const ctl={l:0,r:0,s:[0,0,0,0]};
+let ceros=0;
+const frame=()=>'c '+ctl.l+' '+ctl.r+' '+ctl.s.map(d=>d>0?'+':d<0?'-':'0').join('');
+function empujar(){
+  if(ctl.l||ctl.r||ctl.s.some(Boolean)){ link.control(frame()); ceros=3; }
+  else if(ceros>0){ link.control(frame()); ceros--; }
+}
+setInterval(empujar,100);
+function soltarTodo(){ liberar.forEach(f=>f()); ctl.l=ctl.r=0; ctl.s=[0,0,0,0]; empujar(); }
+
+// ---------------- joystick ----------------
+const joy=$('#joy'), knob=$('#knob');
+let jp=null;
+function joyPos(e){
+  const b=joy.getBoundingClientRect(), R=b.width/2;
+  let x=(e.clientX-b.left-R)/R, y=(b.top+R-e.clientY)/R;
+  const m=Math.hypot(x,y); if(m>1){x/=m;y/=m;}
+  knob.style.transform=`translate(calc(-50% + ${x*R*0.62}px), calc(-50% + ${-y*R*0.62}px))`;
+  if(Math.hypot(x,y)<0.12){ ctl.l=0; ctl.r=0; return; }
+  const l=y+x, r=y-x, k=Math.max(1,Math.abs(l),Math.abs(r));
+  ctl.l=Math.round(l/k*100); ctl.r=Math.round(r/k*100);
+}
+function joySoltar(e){
+  if(jp===null || (e && e.pointerId!==jp)) return;
+  jp=null; joy.classList.remove('on'); knob.style.transform=''; ctl.l=0; ctl.r=0; empujar();
+}
+joy.addEventListener('pointerdown',e=>{
+  e.preventDefault(); if(jp!==null) return;
+  jp=e.pointerId; try{joy.setPointerCapture(jp);}catch(_){}
+  joy.classList.add('on'); joyPos(e); vib(); empujar();
+});
+joy.addEventListener('pointermove',e=>{ if(e.pointerId===jp) joyPos(e); });
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>joy.addEventListener(ev,joySoltar));
+liberar.push(()=>{ if(jp!==null){ jp=null; joy.classList.remove('on'); knob.style.transform=''; } });
+
+// ---------------- botones del brazo (mantener presionado) ----------------
+$$('.hold').forEach(b=>{
+  const i=+b.dataset.i, d=+b.dataset.d; let pid=null;
+  b.addEventListener('pointerdown',e=>{
+    e.preventDefault(); if(pid!==null) return;
+    pid=e.pointerId; try{b.setPointerCapture(pid);}catch(_){}
+    b.classList.add('on'); ctl.s[i]=d; vib(); empujar();
+  });
+  const up=e=>{
+    if(pid===null || (e && e.pointerId!==pid)) return;
+    pid=null; b.classList.remove('on'); if(ctl.s[i]===d) ctl.s[i]=0; empujar();
+  };
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,up));
+  liberar.push(()=>{ pid=null; b.classList.remove('on'); });
+});
+
+// ---------------- velocidades ----------------
+const editando={};
+function deslizador(el,etq,cmd,fmt){
+  const pintar=()=>{ etq.textContent=fmt(+el.value); };
+  el.addEventListener('pointerdown',()=>{editando[el.id||el.dataset.k+el.dataset.i]=Date.now()+60000;});
+  el.addEventListener('input',()=>{ editando[el.id||el.dataset.k+el.dataset.i]=Date.now()+60000; pintar(); });
+  el.addEventListener('change',()=>{ link.enviar(cmd(+el.value)); editando[el.id||el.dataset.k+el.dataset.i]=Date.now()+1500; });
+  pintar();
+  return v=>{ const k=el.id||el.dataset.k+el.dataset.i; if((editando[k]||0)>Date.now()) return; el.value=v; pintar(); };
+}
+const syncVel =deslizador($('#vel'), $('#velV'), v=>'v '+v, pct);
+const syncGiro=deslizador($('#giro'),$('#giroV'),v=>'g '+v, pct);
+const syncDp  =deslizador($('#dp'),  $('#dpV'),  v=>'dp '+v, v=>v+' cm');
+
+// ---------------- hoja de ajustes ----------------
+const syncF=[], syncO=[];
+NOMBRES.forEach((n,i)=>{
+  const t=document.createElement('div'); t.className='tarjeta';
+  t.innerHTML=`<div class="tH"><b>${n}</b><button class="mini" style="flex:0 0 auto" data-c="i${i}">Invertir + / −</button></div>
+    <label class="fila"><span>Fuerza</span><input type="range" min="50" max="500" step="10" data-k="f" data-i="${i}"><b></b></label>
+    <label class="fila"><span>Sostener</span><input type="range" min="-250" max="250" step="5" data-k="o" data-i="${i}"><b></b></label>
+    <div class="fila3"><button class="mini" data-paso="-5" data-i="${i}">− 5</button><button class="mini" data-paso="5" data-i="${i}">+ 5</button><button class="mini" data-c="o${i} 0">Apagar</button></div>`;
+  $('#tarjetas').appendChild(t);
+  const f=t.querySelector('[data-k=f]'), o=t.querySelector('[data-k=o]');
+  syncF[i]=deslizador(f,f.nextElementSibling,v=>'f'+i+' '+v,v=>String(v));
+  syncO[i]=deslizador(o,o.nextElementSibling,v=>'o'+i+' '+v,v=>v===0?'0':(v>0?'+':'')+v);
+  t.querySelectorAll('[data-paso]').forEach(b=>b.addEventListener('click',()=>{
+    o.value=Math.max(-250,Math.min(250,(+o.value)+(+b.dataset.paso)));
+    o.dispatchEvent(new Event('input')); o.dispatchEvent(new Event('change'));
+  }));
+});
+['M1 (rojo)','M2 (verde)','M3 (amarillo)','M4 (azul)'].forEach((n,i)=>{
+  const b=document.createElement('button'); b.dataset.c='mi'+(i+1); b.id='mi'+i; b.textContent='Invertir '+n;
+  $('#motoresInv').appendChild(b);
+});
+
+function abrirHoja(tab){
+  soltarTodo();
+  $('#hoja').hidden=false;
+  if(tab) mostrarTab(tab);
+}
+function mostrarTab(tab){
+  $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  $$('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==tab);
+  if(tab==='consola') logEl.scrollTop=logEl.scrollHeight;
+}
+$$('.tabs button').forEach(b=>b.addEventListener('click',()=>mostrarTab(b.dataset.tab)));
+$('#btnAjustes').addEventListener('click',()=>abrirHoja());
+$('#ticker').addEventListener('click',()=>abrirHoja('consola'));
+$('#cerrarHoja').addEventListener('click',()=>{$('#hoja').hidden=true;});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-c]'); if(!b) return;
+  link.enviar(b.dataset.c); vib(8);
+  if(/^r\d?$/.test(b.dataset.c)) $('#hoja').hidden=true;
+});
+$('#restaurar').addEventListener('click',()=>{ if(confirm('¿Volver a los valores del código y borrar lo guardado?')) link.enviar('borrar'); });
+$('#cmdf').addEventListener('submit',e=>{ e.preventDefault(); const c=$('#cmd').value.trim(); if(c) link.enviar(c); $('#cmd').value=''; });
+$('#btnSost').addEventListener('click',()=>{ link.enviar('sost'); vib(8); });
+
+// ---------------- barra superior ----------------
+$('#conn').addEventListener('click',()=>link.clic());
+$('#paro').addEventListener('pointerdown',e=>{ e.preventDefault(); soltarTodo(); link.enviar('x'); vib(40); });
+$('#btnFull').addEventListener('click',async()=>{
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen({navigationUI:'hide'});
+      try{ await screen.orientation.lock('landscape'); }catch(_){}
+    } else await document.exitFullscreen();
+  }catch(e){ log('Pantalla completa no disponible en este navegador.'); }
+});
+
+// ---------------- estado que manda el carro ----------------
+function estado(st){
+  if(!st) return;
+  syncVel(st.v); syncGiro(st.g);
+  const pl=Math.abs(st.pl||0), pr=Math.abs(st.pr||0);
+  $('#pwm').textContent=(pl||pr)?`Potencia izq ${pct(pl)} · der ${pct(pr)}`:'Detenido';
+  $('#banner').hidden=!st.r;
+  pintarDistancia(st);
+  $('#calTag').hidden=!st.cal;
+  const so=$('#btnSost'); so.textContent='Sostener: '+(st.so?'sí':'no'); so.classList.toggle('on',!!st.so);
+  (st.s||[]).forEach((s,i)=>{
+    $('#p'+i).textContent=s.ref?Math.round(s.p)+'°':'';
+    syncF[i](s.f); syncO[i](s.o);
+  });
+  (st.mi||[]).forEach((m,i)=>{ const b=$('#mi'+i); if(b) b.textContent=(m?'✓ ':'')+'Invertir '+['M1 (rojo)','M2 (verde)','M3 (amarillo)','M4 (azul)'][i]; });
+}
+
+// ---------------- anti-choque ----------------
+let obAntes=false;
+function pintarDistancia(st){
+  if(st.d===undefined) { $('#dist').hidden=true; return; }      // carro sin ultrasónico
+  const el=$('#dist'); el.hidden=false; let txt, cls='dist';
+  if(!st.ac){ txt='Anti-choque apagado'; }
+  else if(st.d<0){ txt='Sensor sin lectura'; }
+  else if(st.ob){ txt='⚠ '+st.d+' cm · no avanza'; cls+=' bloq'; }
+  else if(st.d<st.dp+25){ txt=st.d+' cm · frenando'; cls+=' lento'; }
+  else { txt=(st.d>=400?'> 4 m':st.d+' cm'); cls+=' libre'; }
+  el.textContent=txt; el.className=cls;
+  $('#joy').classList.toggle('bloq',!!st.ob);
+  if(st.ob && !obAntes) vib([60,40,60]);
+  obAntes=!!st.ob;
+  $('#acBtn').textContent=st.ac?'Activado':'Apagado';
+  $('#acBtn').style.color=st.ac?'var(--ok)':'var(--warn)';
+  syncDp(st.dp);
+  $('#distAjustes').textContent='Distancia medida: '+(st.d<0?'sin lectura':st.d+' cm')+(st.ob?' · BLOQUEADO':'');
+}
+
+// ---------------- pantalla encendida, segundo plano, app instalable ----------------
+let wl=null;
+async function pantallaEncendida(){
+  try{ if('wakeLock' in navigator && !wl){ wl=await navigator.wakeLock.request('screen'); wl.addEventListener('release',()=>{wl=null;}); } }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) soltarTodo(); else if(conectado) pantallaEncendida(); });
+window.addEventListener('blur',soltarTodo);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+if(location.protocol==='https:'){
+  const m=document.createElement('link'); m.rel='manifest'; m.href='manifest.webmanifest'; document.head.appendChild(m);
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+link.iniciar();
+</script>
+</body>
+</html>
